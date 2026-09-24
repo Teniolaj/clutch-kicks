@@ -1,0 +1,102 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* surfaces */
+  --ck-bg: #ffffff;
+  --ck-bg-alt: #f4f2ee;
+  --ck-bg-sunken: #e8e5df;
+  --ck-bg-invert: #0b0b0b;
+
+  /* ink */
+  --ck-ink: #0b0b0b;
+  --ck-ink-muted: #55524c;
+  --ck-ink-invert: #ffffff;
+
+  /* lines */
+  --ck-line: #d8d4cc;
+  --ck-line-strong: #0b0b0b;
+
+  /* accents */
+  --ck-red: #e8252d;
+  --ck-red-press: #c81d24;
+  --ck-volt: #ccff00;
+  --ck-volt-press: #b5e600;
+
+  /* state */
+  --ck-focus: #0b0b0b;
+}
+
+[data-theme="dark"] {
+  --ck-bg: #0b0b0b;
+  --ck-bg-alt: #151515;
+  --ck-bg-sunken: #000000;
+  --ck-bg-invert: #f5f3ef;
+  --ck-ink: #f5f3ef;
+  --ck-ink-muted: #a8a49c;
+  --ck-ink-invert: #0b0b0b;
+  --ck-line: #2a2a2a;
+  --ck-line-strong: #f5f3ef;
+  --ck-red: #ff4d3d;
+  --ck-red-press: #e8252d;
+  --ck-volt: #ccff00;
+  --ck-volt-press: #b5e600;
+  --ck-focus: #ccff00;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  background: var(--ck-bg);
+  color: var(--ck-ink);
+  font-family: var(--font-inter), sans-serif;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background-color: var(--ck-volt);
+  color: var(--ck-ink);
+}
+
+/* Sleek minimal scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--ck-bg-sunken);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--ck-line-strong);
+  opacity: 0.4;
+}
+
+.tracking-ultra-wide {
+  letter-spacing: 0.18em;
+}
+
+/* reduced motion: collapse the four sanctioned moves */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
