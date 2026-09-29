@@ -1,12 +1,26 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
-import { Product } from "@/data/products";
+import type { CatalogProduct, CatalogVariant } from "@/lib/catalog-types";
+
+// What the bag needs to show a line without loading the catalogue. Prices are
+// re-checked against the database at checkout.
+export interface CartSnapshot {
+  productSlug: string;
+  variantSlug: string;
+  brand: string;
+  name: string;
+  colorway: string;
+  image: string;
+  price: number;
+  lowStock: boolean;
+}
 
 export interface CartLine {
-  productId: string;
+  variantId: string;
   size: string;
   qty: number;
+  snapshot: CartSnapshot;
 }
 
 interface CartContextValue {
@@ -14,15 +28,17 @@ interface CartContextValue {
   isOpen: boolean;
   openCart: () => void;
   closeCart: () => void;
-  addItem: (product: Product, size: string) => void;
-  removeItem: (productId: string, size: string) => void;
-  updateQty: (productId: string, size: string, qty: number) => void;
+  addItem: (product: CatalogProduct, variant: CatalogVariant, size: string) => void;
+  removeItem: (variantId: string, size: string) => void;
+  updateQty: (variantId: string, size: string, qty: number) => void;
   count: number;
 }
 
 const CartContext = createContext<CartContextValue | null>(null);
 
-const STORAGE_KEY = "ck_cart_lines";
+// v2: lines are colour variants from the database. Older bags held products from
+// the static catalogue and are dropped.
+const STORAGE_KEY = "ck_cart_v2";
 
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [lines, setLines] = useState<CartLine[]>([]);
@@ -31,6 +47,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     try {
+      localStorage.removeItem("ck_cart_lines");
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) setLines(JSON.parse(raw));
     } catch {
@@ -48,27 +65,37 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [lines, hydrated]);
 
-  const addItem = useCallback((product: Product, size: string) => {
+  const addItem = useCallback((product: CatalogProduct, variant: CatalogVariant, size: string) => {
+    const snapshot: CartSnapshot = {
+      productSlug: product.slug,
+      variantSlug: variant.slug,
+      brand: product.brand,
+      name: product.name,
+      colorway: variant.colorway,
+      image: variant.images[0],
+      price: variant.price,
+      lowStock: variant.sizes.find((s) => s.eu === size)?.lowStock ?? false,
+    };
     setLines((prev) => {
-      const existing = prev.find((l) => l.productId === product.id && l.size === size);
+      const existing = prev.find((l) => l.variantId === variant.id && l.size === size);
       if (existing) {
         return prev.map((l) =>
-          l.productId === product.id && l.size === size ? { ...l, qty: l.qty + 1 } : l
+          l.variantId === variant.id && l.size === size ? { ...l, qty: l.qty + 1, snapshot } : l
         );
       }
-      return [...prev, { productId: product.id, size, qty: 1 }];
+      return [...prev, { variantId: variant.id, size, qty: 1, snapshot }];
     });
     setIsOpen(true);
   }, []);
 
-  const removeItem = useCallback((productId: string, size: string) => {
-    setLines((prev) => prev.filter((l) => !(l.productId === productId && l.size === size)));
+  const removeItem = useCallback((variantId: string, size: string) => {
+    setLines((prev) => prev.filter((l) => !(l.variantId === variantId && l.size === size)));
   }, []);
 
-  const updateQty = useCallback((productId: string, size: string, qty: number) => {
+  const updateQty = useCallback((variantId: string, size: string, qty: number) => {
     setLines((prev) =>
       prev.map((l) =>
-        l.productId === productId && l.size === size ? { ...l, qty: Math.max(1, qty) } : l
+        l.variantId === variantId && l.size === size ? { ...l, qty: Math.max(1, qty) } : l
       )
     );
   }, []);

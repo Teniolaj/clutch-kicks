@@ -7,7 +7,7 @@ export const NewsletterBand: React.FC = () => {
   const [subscribed, setSubscribed] = useState(false);
 
   return (
-    <section className="w-full bg-volt text-ink">
+    <section id="newsletter" className="w-full bg-volt text-ink scroll-mt-[104px]">
       <div className="max-w-[1440px] mx-auto px-4 md:px-8 py-14 flex flex-col md:flex-row items-center justify-between gap-6">
         <h3 className="font-display uppercase text-[clamp(24px,3.5vw,36px)] leading-[0.95] text-center md:text-left">
           Drops First.

@@ -10,6 +10,7 @@ interface EditorialBandProps {
   lines: string[]; // last line rendered in volt
   href: string;
   ctaLabel: string;
+  cardClassName?: string;
 }
 
 export const EditorialBand: React.FC<EditorialBandProps> = ({
@@ -18,6 +19,7 @@ export const EditorialBand: React.FC<EditorialBandProps> = ({
   lines,
   href,
   ctaLabel,
+  cardClassName,
 }) => {
   return (
     <section className="relative w-full min-h-[480px] bg-bg-invert text-ink-invert overflow-hidden flex items-center">
@@ -30,11 +32,11 @@ export const EditorialBand: React.FC<EditorialBandProps> = ({
       />
 
       <div className="relative max-w-[1440px] w-full mx-auto px-4 md:px-8 py-16">
-        <div className="max-w-lg bg-bg-invert p-8">
+        <div className={`max-w-xl bg-bg-invert p-8 overflow-hidden ${cardClassName ?? ""}`}>
           <span className="font-mono text-xs uppercase tracking-ultra-wide text-volt">
             {eyebrow}
           </span>
-          <h2 className="mt-3 font-display uppercase text-[clamp(24px,4vw,40px)] leading-[0.95]">
+          <h2 className="mt-3 font-display uppercase text-[clamp(24px,3.5vw,40px)] leading-[0.95]">
             {lines.slice(0, -1).map((line, i) => (
               <span key={i} className="block">
                 {line}

@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronRight, MessageSquare } from "lucide-react";
 import { TickerBar } from "./TickerBar";
 import { Navbar } from "./Navbar";
@@ -12,33 +13,79 @@ import { ProductCard } from "./ProductCard";
 import { SectionHeader } from "./SectionHeader";
 import { useCart } from "./cart/CartContext";
 import { CartDrawer as Drawer } from "./cart/CartDrawer";
-import { Product, products, formatNaira, getProductIndex, getSizesFor } from "@/data/products";
+import { ColourSwatches } from "./ColourSwatches";
+import { formatNaira } from "@/data/products";
+import { type CatalogProduct, type CatalogVariant, productHref, variantBySlug } from "@/lib/catalog-types";
+import { CONTACT_INFO } from "@/data/contact";
 
-export const ProductDetailClient: React.FC<{ product: Product }> = ({ product }) => {
-  const idx = getProductIndex(product.id);
-  const sizes = getSizesFor(idx);
-  const firstAvailable = sizes.find((s) => !s.soldOut)?.eu ?? null;
-  const [selectedSize, setSelectedSize] = useState<string | null>(firstAvailable);
-  const { addItem, openCart } = useCart();
+const firstAvailable = (v: CatalogVariant) => v.sizes.find((s) => !s.soldOut)?.eu ?? null;
 
-  const whatsappUrl = `https://wa.me/2348000000000?text=${encodeURIComponent(
-    `Hello Clutch Kicks! I'd like to order the ${product.brand} ${product.name} (${product.colorway})${
+interface DetailProps {
+  product: CatalogProduct;
+  completeTheFit: CatalogProduct[];
+  alsoLike: CatalogProduct[];
+}
+
+// Reads ?color= so a link to a specific colour opens on it. The page wraps this in
+// Suspense with <ProductDetailClient colorSlug={null}> as the fallback, so the
+// server still renders the full page (on the main colour).
+export const ProductDetailWithColor: React.FC<DetailProps> = (props) => {
+  const searchParams = useSearchParams();
+  return <ProductDetailClient {...props} colorSlug={searchParams.get("color")} />;
+};
+
+export const ProductDetailClient: React.FC<DetailProps & { colorSlug: string | null }> = ({
+  product,
+  completeTheFit,
+  alsoLike,
+  colorSlug,
+}) => {
+  const router = useRouter();
+  const [variantId, setVariantId] = useState(() => variantBySlug(product, colorSlug).id);
+  const variant = product.variants.find((v) => v.id === variantId) ?? product.variants[0];
+  const [imageIndex, setImageIndex] = useState(0);
+  const [selectedSize, setSelectedSize] = useState<string | null>(firstAvailable(variant));
+  const { addItem } = useCart();
+
+  // Follow ?color= changes made from outside the swatches (e.g. a bag link to another colour).
+  const colorVariantId = variantBySlug(product, colorSlug).id;
+  useEffect(() => {
+    const next = product.variants.find((v) => v.id === colorVariantId);
+    if (!next) return;
+    setVariantId(next.id);
+    setImageIndex(0);
+    setSelectedSize(firstAvailable(next));
+  }, [product, colorVariantId]);
+
+  const soldOut = !variant.inStock;
+  const image = variant.images[imageIndex] ?? variant.images[0];
+
+  function selectVariant(id: string) {
+    const next = product.variants.find((v) => v.id === id);
+    if (!next) return;
+    setVariantId(id);
+    setImageIndex(0);
+    setSelectedSize(firstAvailable(next));
+    router.replace(productHref(product, next), { scroll: false });
+  }
+
+  const whatsappUrl = `https://wa.me/${CONTACT_INFO.whatsappNumber}?text=${encodeURIComponent(
+    `Hello Clutch Kicks! I'd like to order the ${product.brand} ${product.name} (${variant.colorway})${
       selectedSize ? ` in EU ${selectedSize}` : ""
     }. Please confirm availability.`
   )}`;
 
-  const completeTheFit = products.filter((p) => p.id !== product.id && p.silhouette !== product.silhouette).slice(0, 4);
-  const alsoLike = products.filter((p) => p.id !== product.id && p.brand === product.brand).slice(0, 4);
-  const alsoLikeFallback = alsoLike.length > 0 ? alsoLike : products.filter((p) => p.id !== product.id).slice(0, 4);
-
   const handleAddToCart = () => {
+    if (soldOut) return;
     if (!selectedSize) {
       const grid = document.getElementById("size-grid");
       grid?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
-    addItem(product, selectedSize);
+    addItem(product, variant, selectedSize);
   };
+
+  const addLabel = soldOut ? "Sold Out" : `Add To Cart — ${formatNaira(variant.price)}`;
 
   return (
     <div className="relative min-h-screen bg-bg text-ink">
@@ -58,14 +105,38 @@ export const ProductDetailClient: React.FC<{ product: Product }> = ({ product })
         <div className="max-w-[1440px] mx-auto px-4 md:px-8 grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16">
           {/* Gallery */}
           <div className="lg:sticky lg:top-[120px] lg:self-start">
-            <div className="aspect-square bg-bg-alt border border-line overflow-hidden">
+            <div className="relative aspect-square bg-bg-alt border border-line overflow-hidden">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={product.image}
-                alt={`${product.brand} ${product.name} — ${product.colorway}`}
-                className="w-full h-full object-cover"
+                src={image}
+                alt={`${product.brand} ${product.name} — ${variant.colorway}`}
+                className={`w-full h-full object-cover ${soldOut ? "opacity-60 grayscale-[40%]" : ""}`}
               />
+              {soldOut && (
+                <span className="absolute top-3 left-3 px-2.5 py-1 bg-bg-invert text-ink-invert text-[11px] font-mono font-bold uppercase tracking-wide">
+                  Sold Out
+                </span>
+              )}
             </div>
+            {variant.images.length > 1 && (
+              <div className="grid grid-cols-5 gap-2 mt-2">
+                {variant.images.map((src, i) => (
+                  <button
+                    key={src}
+                    type="button"
+                    onClick={() => setImageIndex(i)}
+                    aria-label={`Photo ${i + 1}`}
+                    aria-pressed={i === imageIndex}
+                    className={`aspect-square bg-bg-alt border-2 overflow-hidden ${
+                      i === imageIndex ? "border-ink" : "border-line hover:border-line-strong"
+                    }`}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={src} alt="" loading="lazy" className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Info */}
@@ -76,18 +147,36 @@ export const ProductDetailClient: React.FC<{ product: Product }> = ({ product })
             <h1 className="font-display uppercase text-[clamp(28px,4vw,44px)] leading-[0.95] mt-1">
               {product.name}
             </h1>
-            <p className="font-sans text-sm text-ink-muted mt-2">{product.colorway}</p>
+            <p className="font-sans text-sm text-ink-muted mt-2">{variant.colorway}</p>
 
             <div className="flex items-baseline gap-3 mt-4">
               <span className="font-sans font-semibold text-2xl text-red">
-                {formatNaira(product.price)}
+                {formatNaira(variant.price)}
               </span>
-              {product.compareAtPrice && (
+              {variant.compareAtPrice && variant.compareAtPrice > variant.price && (
                 <span className="font-sans text-base text-ink-muted line-through">
-                  {formatNaira(product.compareAtPrice)}
+                  {formatNaira(variant.compareAtPrice)}
                 </span>
               )}
             </div>
+            {variant.promotionName && (
+              <p className="font-mono text-[11px] uppercase tracking-wide text-red mt-1">{variant.promotionName}</p>
+            )}
+
+            {product.variants.length > 1 && (
+              <div className="mt-6">
+                <span className="font-sans text-xs font-bold uppercase tracking-wide">
+                  Colour: <span className="font-normal normal-case text-ink-muted">{variant.colorway}</span>
+                </span>
+                <ColourSwatches
+                  product={product}
+                  activeId={variant.id}
+                  onSelect={selectVariant}
+                  size="lg"
+                  className="mt-3"
+                />
+              </div>
+            )}
 
             <p className="font-sans text-sm text-ink-muted leading-relaxed mt-4 max-w-md">
               {product.description}
@@ -102,9 +191,11 @@ export const ProductDetailClient: React.FC<{ product: Product }> = ({ product })
                   Size Guide
                 </button>
               </div>
-              <SizeGrid sizes={sizes} selected={selectedSize} onSelect={setSelectedSize} />
-              {!selectedSize && (
-                <p className="font-sans text-xs text-red mt-2">Select a size to continue.</p>
+              <SizeGrid sizes={variant.sizes} selected={selectedSize} onSelect={setSelectedSize} />
+              {soldOut ? (
+                <p className="font-sans text-xs text-red mt-2">This colour is sold out.</p>
+              ) : (
+                !selectedSize && <p className="font-sans text-xs text-red mt-2">Select a size to continue.</p>
               )}
             </div>
 
@@ -113,9 +204,10 @@ export const ProductDetailClient: React.FC<{ product: Product }> = ({ product })
               <button
                 type="button"
                 onClick={handleAddToCart}
-                className="w-full h-14 bg-ink text-ink-invert border-2 border-ink font-sans font-semibold text-sm uppercase tracking-wide hover:bg-transparent hover:text-ink transition-colors"
+                disabled={soldOut}
+                className="w-full h-14 bg-ink text-ink-invert border-2 border-ink font-sans font-semibold text-sm uppercase tracking-wide hover:bg-transparent hover:text-ink transition-colors disabled:bg-bg-sunken disabled:border-line disabled:text-ink-muted disabled:cursor-not-allowed"
               >
-                Add To Cart — {formatNaira(product.price)}
+                {addLabel}
               </button>
               <a
                 href={whatsappUrl}
@@ -160,24 +252,28 @@ export const ProductDetailClient: React.FC<{ product: Product }> = ({ product })
         </div>
 
         {/* Complete the Fit */}
-        <section className="max-w-[1440px] mx-auto px-4 md:px-8 py-16 md:py-24">
-          <SectionHeader label="Pair It" title="Complete The Fit" />
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-            {completeTheFit.map((p) => (
-              <ProductCard key={p.id} product={p} />
-            ))}
-          </div>
-        </section>
+        {completeTheFit.length > 0 && (
+          <section className="max-w-[1440px] mx-auto px-4 md:px-8 py-16 md:py-24">
+            <SectionHeader label="Pair It" title="Complete The Fit" />
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+              {completeTheFit.map((p) => (
+                <ProductCard key={p.id} product={p} />
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* You Might Also Like */}
-        <section className="max-w-[1440px] mx-auto px-4 md:px-8 pb-16 md:pb-24">
-          <SectionHeader label="More Like This" title="You Might Also Like" />
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-            {alsoLikeFallback.map((p) => (
-              <ProductCard key={p.id} product={p} />
-            ))}
-          </div>
-        </section>
+        {alsoLike.length > 0 && (
+          <section className="max-w-[1440px] mx-auto px-4 md:px-8 pb-16 md:pb-24">
+            <SectionHeader label="More Like This" title="You Might Also Like" />
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+              {alsoLike.map((p) => (
+                <ProductCard key={p.id} product={p} />
+              ))}
+            </div>
+          </section>
+        )}
       </main>
 
       {/* Mobile sticky buy bar */}
@@ -185,9 +281,10 @@ export const ProductDetailClient: React.FC<{ product: Product }> = ({ product })
         <button
           type="button"
           onClick={handleAddToCart}
-          className="w-full h-14 bg-ink text-ink-invert font-sans font-semibold text-sm uppercase tracking-wide"
+          disabled={soldOut}
+          className="w-full h-14 bg-ink text-ink-invert font-sans font-semibold text-sm uppercase tracking-wide disabled:bg-bg-sunken disabled:text-ink-muted"
         >
-          Add To Cart — {formatNaira(product.price)}
+          {addLabel}
         </button>
       </div>
 

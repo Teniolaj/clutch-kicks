@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { Send, CheckCircle2 } from "lucide-react";
+import { CONTACT_INFO } from "@/data/contact";
 
 const COLUMNS = [
   {
@@ -19,14 +20,15 @@ const COLUMNS = [
       { label: "Size & Fit Guide", href: "/products" },
       { label: "Same-Day Lagos Delivery", href: "/products" },
       { label: "14-Day Returns", href: "/products" },
-      { label: "WhatsApp Concierge", href: "https://wa.me/2348000000000" },
+      { label: "WhatsApp Concierge", href: CONTACT_INFO.whatsappUrl },
     ],
   },
   {
-    title: "Company",
+    title: "Connect",
     links: [
-      { label: "Home", href: "/" },
-      { label: "About", href: "/" },
+      { label: `WhatsApp: ${CONTACT_INFO.whatsappDisplay}`, href: CONTACT_INFO.whatsappUrl },
+      { label: `Instagram: ${CONTACT_INFO.instagramHandle}`, href: CONTACT_INFO.instagramUrl },
+      { label: `Snapchat: ${CONTACT_INFO.snapchatHandle}`, href: CONTACT_INFO.snapchatUrl },
     ],
   },
 ];
@@ -44,13 +46,27 @@ export const Footer: React.FC = () => {
                 {col.title}
               </h4>
               <ul className="flex flex-col gap-2.5 text-sm font-sans text-ink-invert/70">
-                {col.links.map((l) => (
-                  <li key={l.label}>
-                    <Link href={l.href} className="hover:text-volt transition-colors">
-                      {l.label}
-                    </Link>
-                  </li>
-                ))}
+                {col.links.map((l) => {
+                  const isExternal = l.href.startsWith("http");
+                  return (
+                    <li key={l.label}>
+                      {isExternal ? (
+                        <a
+                          href={l.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="hover:text-volt transition-colors"
+                        >
+                          {l.label}
+                        </a>
+                      ) : (
+                        <Link href={l.href} className="hover:text-volt transition-colors">
+                          {l.label}
+                        </Link>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           ))}
@@ -94,15 +110,30 @@ export const Footer: React.FC = () => {
         </div>
 
         <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-6 text-xs font-mono uppercase tracking-wide text-ink-invert/50">
-          <div className="flex items-center gap-5">
-            <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="hover:text-volt transition-colors">
-              Instagram
+          <div className="flex flex-wrap items-center gap-5">
+            <a
+              href={CONTACT_INFO.instagramUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-volt transition-colors"
+            >
+              Instagram (@{CONTACT_INFO.instagramHandle})
             </a>
-            <a href="https://x.com" target="_blank" rel="noopener noreferrer" className="hover:text-volt transition-colors">
-              X / Twitter
+            <a
+              href={CONTACT_INFO.snapchatUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-volt transition-colors"
+            >
+              Snapchat ({CONTACT_INFO.snapchatHandle})
             </a>
-            <a href="https://wa.me/2348000000000" target="_blank" rel="noopener noreferrer" className="hover:text-volt transition-colors">
-              WhatsApp
+            <a
+              href={CONTACT_INFO.whatsappUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-volt transition-colors"
+            >
+              WhatsApp ({CONTACT_INFO.whatsappDisplay})
             </a>
           </div>
           <div>© {new Date().getFullYear()} Clutch Kicks. All rights reserved.</div>

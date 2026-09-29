@@ -12,10 +12,40 @@ import { Footer } from "@/components/Footer";
 import { CartDrawer } from "@/components/cart/CartDrawer";
 import { Reveal } from "@/components/Reveal";
 import { products } from "@/data/products";
+import { getCatalog } from "@/lib/catalog";
+import { type CatalogProduct, isNewDrop } from "@/lib/catalog-types";
 
-export default function Home() {
-  const featured = products.slice(0, 8);
-  const newDrops = products.filter((p) => p.badge === "NEW" || p.badge === "TRENDING").slice(0, 8);
+// Cached and refreshed whenever a product is saved in admin.
+export const revalidate = 300;
+
+const SECTION_SIZE = 8;
+
+const EmptySection = () => (
+  <p className="py-16 text-center font-sans text-ink-muted">New pairs are landing soon. Check back shortly.</p>
+);
+
+const ProductGrid = ({ items }: { items: CatalogProduct[] }) => (
+  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+    {items.map((p, i) => (
+      <Reveal key={p.id} delay={(i % 4) * 0.08} className="h-full">
+        <ProductCard product={p} />
+      </Reveal>
+    ))}
+  </div>
+);
+
+export default async function Home() {
+  // The catalogue comes back newest first.
+  const catalog = await getCatalog();
+
+  // New Drops: NEW / TRENDING badges first, topped up with the latest uploads.
+  const newDrops = [...catalog.filter(isNewDrop), ...catalog.filter((p) => !isNewDrop(p))].slice(0, SECTION_SIZE);
+  // Featured: the next products not already in New Drops, so the two rows differ
+  // once there are enough products.
+  const rest = catalog.filter((p) => !newDrops.includes(p));
+  const featured = (rest.length > 0 ? rest : catalog).slice(0, SECTION_SIZE);
+
+  // Editorial band photos are brand imagery, not products, so they stay static.
   const editorialProduct = products.find((p) => p.id === "jordan5-belair") ?? products[0];
   const editorialProduct2 = products.find((p) => p.id === "nb-9060-sage") ?? products[1];
 
@@ -33,20 +63,14 @@ export default function Home() {
           <Reveal>
             <SectionHeader label="Our Picks" title="Featured Kicks" viewAllHref="/products" />
           </Reveal>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-            {featured.map((p, i) => (
-              <Reveal key={p.id} delay={(i % 4) * 0.08}>
-                <ProductCard product={p} />
-              </Reveal>
-            ))}
-          </div>
+          {featured.length > 0 ? <ProductGrid items={featured} /> : <EmptySection />}
         </section>
 
         <Reveal direction="none">
           <EditorialBand
             image={editorialProduct.image}
             eyebrow="The Culture"
-            lines={["Don't follow", "the trend.", "Set it."]}
+            lines={["Don't follow the trend.", "Set it."]}
             href="/products"
             ctaLabel="Shop Now"
           />
@@ -60,13 +84,7 @@ export default function Home() {
           <Reveal>
             <SectionHeader label="Just In" title="New Drops" viewAllHref="/products?filter=new" />
           </Reveal>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-            {newDrops.map((p, i) => (
-              <Reveal key={p.id} delay={(i % 4) * 0.08}>
-                <ProductCard product={p} />
-              </Reveal>
-            ))}
-          </div>
+          {newDrops.length > 0 ? <ProductGrid items={newDrops} /> : <EmptySection />}
         </section>
 
         <Reveal direction="none">

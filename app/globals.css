@@ -85,6 +85,14 @@ body {
   opacity: 0.4;
 }
 
+/* Horizontal strips that scroll by swipe/trackpad without showing a bar */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 .tracking-ultra-wide {
   letter-spacing: 0.18em;
 }

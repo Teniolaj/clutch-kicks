@@ -3,11 +3,14 @@ node_modules/
 
 # next.js
 .next/
+.next-check/
 out/
 build/
 
 # env files
 .env*
+!.env.example
+.env.local
 
 # misc
 *.tsbuildinfo

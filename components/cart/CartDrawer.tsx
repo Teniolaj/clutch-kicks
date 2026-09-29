@@ -1,23 +1,34 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import { X, Minus, Plus, MessageSquare } from "lucide-react";
 import { useCart } from "./CartContext";
-import { products, formatNaira, getProductIndex, getSizesFor } from "@/data/products";
+import Link from "next/link";
+import { formatNaira } from "@/data/products";
+import { CONTACT_INFO } from "@/data/contact";
 
 const FREE_DELIVERY_THRESHOLD = 150000;
 const DELIVERY_FEE = 5000;
-const WHATSAPP_NUMBER = "2348000000000";
+const WHATSAPP_NUMBER = CONTACT_INFO.whatsappNumber;
 
 export const CartDrawer: React.FC = () => {
   const { lines, isOpen, closeCart, removeItem, updateQty } = useCart();
 
-  const items = lines
-    .map((line) => {
-      const product = products.find((p) => p.id === line.productId);
-      return product ? { line, product } : null;
-    })
-    .filter((x): x is { line: typeof lines[0]; product: (typeof products)[0] } => x !== null);
+  // Freeze the page behind the open cart. The gutter stays reserved so the page
+  // doesn't jump sideways when the scrollbar disappears.
+  useEffect(() => {
+    if (!isOpen) return;
+    const root = document.documentElement;
+    const prev = { overflow: root.style.overflow, gutter: root.style.scrollbarGutter };
+    root.style.overflow = "hidden";
+    root.style.scrollbarGutter = "stable";
+    return () => {
+      root.style.overflow = prev.overflow;
+      root.style.scrollbarGutter = prev.gutter;
+    };
+  }, [isOpen]);
+
+  const items = lines.map((line) => ({ line, product: line.snapshot }));
 
   const subtotal = items.reduce((sum, { line, product }) => sum + product.price * line.qty, 0);
   const delivery = subtotal === 0 || subtotal >= FREE_DELIVERY_THRESHOLD ? 0 : DELIVERY_FEE;
@@ -72,29 +83,34 @@ export const CartDrawer: React.FC = () => {
           </div>
         ) : (
           <>
-            <div className="flex-1 overflow-y-auto px-6 py-4 flex flex-col gap-5">
+            <div className="flex-1 overflow-y-auto overscroll-contain px-6 py-4 flex flex-col gap-5">
               {items.map(({ line, product }) => {
-                const idx = getProductIndex(product.id);
-                const sizeInfo = getSizesFor(idx).find((s) => s.eu === line.size);
+                const href = `/products/${product.productSlug}/?color=${product.variantSlug}`;
                 return (
-                  <div key={`${product.id}-${line.size}`} className="flex gap-4 pb-5 border-b border-line">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={product.image}
-                      alt={`${product.brand} ${product.name}`}
-                      className="w-20 h-20 object-cover bg-bg-alt border border-line shrink-0"
-                    />
+                  <div key={`${line.variantId}-${line.size}`} className="flex gap-4 pb-5 border-b border-line">
+                    <Link href={href} onClick={closeCart} className="shrink-0">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={product.image}
+                        alt={`${product.brand} ${product.name}`}
+                        className="w-20 h-20 object-cover bg-bg-alt border border-line"
+                      />
+                    </Link>
                     <div className="flex-1 flex flex-col gap-1">
                       <span className="font-mono text-[11px] uppercase tracking-ultra-wide text-ink-muted">
                         {product.brand}
                       </span>
-                      <span className="font-sans font-semibold text-sm leading-tight">
+                      <Link
+                        href={href}
+                        onClick={closeCart}
+                        className="font-sans font-semibold text-sm leading-tight hover:underline underline-offset-2"
+                      >
                         {product.name}
-                      </span>
+                      </Link>
                       <span className="font-sans text-xs text-ink-muted">{product.colorway}</span>
                       <span className="font-mono text-[11px] uppercase text-ink-muted">
                         EU {line.size}
-                        {sizeInfo?.lowStock && (
+                        {product.lowStock && (
                           <span className="text-red ml-1">— low stock</span>
                         )}
                       </span>
@@ -103,7 +119,7 @@ export const CartDrawer: React.FC = () => {
                         <div className="flex items-center border-2 border-line">
                           <button
                             type="button"
-                            onClick={() => updateQty(product.id, line.size, line.qty - 1)}
+                            onClick={() => updateQty(line.variantId, line.size, line.qty - 1)}
                             className="w-8 h-8 flex items-center justify-center hover:bg-bg-alt"
                             aria-label="Decrease quantity"
                           >
@@ -112,7 +128,7 @@ export const CartDrawer: React.FC = () => {
                           <span className="w-8 text-center font-mono text-sm">{line.qty}</span>
                           <button
                             type="button"
-                            onClick={() => updateQty(product.id, line.size, line.qty + 1)}
+                            onClick={() => updateQty(line.variantId, line.size, line.qty + 1)}
                             className="w-8 h-8 flex items-center justify-center hover:bg-bg-alt"
                             aria-label="Increase quantity"
                           >
@@ -126,7 +142,7 @@ export const CartDrawer: React.FC = () => {
                     </div>
                     <button
                       type="button"
-                      onClick={() => removeItem(product.id, line.size)}
+                      onClick={() => removeItem(line.variantId, line.size)}
                       aria-label="Remove item"
                       className="self-start text-ink-muted hover:text-red transition-colors"
                     >

@@ -58,20 +58,20 @@ export const Navbar: React.FC = () => {
         </nav>
 
         <div className="flex items-center gap-1">
-          <button
-            type="button"
-            aria-label="Search"
+          <Link
+            href="/products"
+            aria-label="Search products"
             className="w-11 h-11 flex items-center justify-center text-ink-invert hover:text-volt transition-colors"
           >
             <Search className="w-[22px] h-[22px]" strokeWidth={1.5} />
-          </button>
-          <button
-            type="button"
-            aria-label="Account"
+          </Link>
+          <Link
+            href="/#newsletter"
+            aria-label="Join the newsletter"
             className="w-11 h-11 hidden sm:flex items-center justify-center text-ink-invert hover:text-volt transition-colors"
           >
             <User className="w-[22px] h-[22px]" strokeWidth={1.5} />
-          </button>
+          </Link>
           <button
             type="button"
             aria-label={`Cart, ${count} items`}

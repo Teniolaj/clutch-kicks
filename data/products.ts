@@ -116,6 +116,14 @@ export const silhouettes: Silhouette[] = [
   "Slip-On",
 ];
 
+export const badges: Exclude<Badge, null>[] = [
+  "NEW",
+  "BACK IN STOCK",
+  "TRENDING",
+  "FINAL PAIR",
+  "SALE",
+];
+
 export function formatNaira(amount: number): string {
   return `₦${amount.toLocaleString("en-NG")}`;
 }
