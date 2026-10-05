@@ -20,6 +20,15 @@ export const revalidate = 300;
 
 const SECTION_SIZE = 8;
 
+function shuffle<T>(items: T[]): T[] {
+  const copy = [...items];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
 const EmptySection = () => (
   <p className="py-16 text-center font-sans text-ink-muted">New pairs are landing soon. Check back shortly.</p>
 );
@@ -40,10 +49,11 @@ export default async function Home() {
 
   // New Drops: NEW / TRENDING badges first, topped up with the latest uploads.
   const newDrops = [...catalog.filter(isNewDrop), ...catalog.filter((p) => !isNewDrop(p))].slice(0, SECTION_SIZE);
-  // Featured: the next products not already in New Drops, so the two rows differ
-  // once there are enough products.
-  const rest = catalog.filter((p) => !newDrops.includes(p));
-  const featured = (rest.length > 0 ? rest : catalog).slice(0, SECTION_SIZE);
+  // Featured: the next products not already in New Drops, newest first. If that
+  // doesn't fill the section, top it up with random picks from New Drops. The
+  // picks change each time the page is rebuilt (every few minutes or on save).
+  const rest = catalog.filter((p) => !newDrops.includes(p)).slice(0, SECTION_SIZE);
+  const featured = [...rest, ...shuffle(newDrops)].slice(0, SECTION_SIZE);
 
   // Editorial band photos are brand imagery, not products, so they stay static.
   const editorialProduct = products.find((p) => p.id === "jordan5-belair") ?? products[0];
